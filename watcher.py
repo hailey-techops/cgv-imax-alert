@@ -97,6 +97,31 @@ def show_key(show: dict) -> str:
     )
 
 
+def build_messages(new_hits: list[tuple[dict, dict]]) -> list[str]:
+    """(영화, 극장, 상영관)별로 별도 메시지 생성. 시간마다 잔여/전체 좌석 표기."""
+    groups: dict[tuple, dict[str, list[str]]] = {}
+    for _target, s in new_hits:
+        title = s.get("expoProdNm", "")
+        fmt = s.get("movkndDsplNm", "")
+        if fmt and fmt not in title:
+            title = f"{title} ({fmt})"
+        key = (title, s.get("siteNm", ""), s.get("expoScnsNm", ""))
+        entry = f"{fmt_time(s.get('scnsrtTm', ''))}({s.get('frSeatCnt', '?')}/{s.get('stcnt', '?')})"
+        groups.setdefault(key, {}).setdefault(s["scnYmd"], []).append(entry)
+
+    messages = []
+    for (title, site, screen), by_date in groups.items():
+        lines = ["🎬 *CGV 예매 오픈 감지!*", ""]
+        lines.append(f"*{title}*  |  {site} · {screen}")
+        for ymd in sorted(by_date):
+            times = " · ".join(sorted(by_date[ymd]))
+            lines.append(f">*{fmt_date(ymd)}*  {times}")
+        lines.append("")
+        lines.append(f"<{BOOKING_URL}|바로 예매하러 가기 →>")
+        messages.append("\n".join(lines))
+    return messages
+
+
 def send_slack(webhook: str, text: str) -> None:
     payload = json.dumps({"text": text}).encode("utf-8")
     req = Request(webhook, data=payload, headers={"Content-Type": "application/json"})
@@ -146,21 +171,10 @@ def main() -> int:
             time.sleep(0.5)  # 예의상 요청 간격
 
     if new_hits:
-        lines = ["🎬 *CGV 예매 오픈 감지!*"]
-        for target, s in new_hits:
-            seats = f"{s.get('frSeatCnt', '?')}/{s.get('stcnt', '?')}석"
-            title = s.get("expoProdNm", "")
-            fmt = s.get("movkndDsplNm", "")
-            if fmt and fmt not in title:
-                title = f"{title} ({fmt})"
-            lines.append(
-                f"• {s.get('siteNm', '')} | {fmt_date(s['scnYmd'])} "
-                f"{fmt_time(s.get('scnsrtTm', ''))} | {s.get('expoScnsNm', '')} | "
-                f"{title} | 잔여 {seats}"
-            )
-        lines.append(f"<{BOOKING_URL}|바로 예매하러 가기>")
-        send_slack(webhook, "\n".join(lines))
-        print(f"알림 전송: {len(new_hits)}건")
+        msgs = build_messages(new_hits)
+        for msg in msgs:
+            send_slack(webhook, msg)
+        print(f"알림 전송: {len(new_hits)}건 ({len(msgs)}개 메시지)")
     else:
         print("새 회차 없음")
 
