@@ -1,19 +1,27 @@
 {
-  "_comment": "site_no: 극장 코드 (용산아이파크몰=0013). movie_keyword/screen_keyword: 제목·상영관명 부분일치, 빈 문자열이면 전체 허용. dates: YYYYMMDD 목록, 빈 배열이면 오픈된 모든 날짜 감시.",
+  "_comment": "site_no: 극장 코드 (용산아이파크몰=0013). movie_keyword/screen_keyword: 제목·상영관명 부분일치, 빈 문자열이면 전체 허용. dates: YYYYMMDD 목록, 빈 배열이면 오픈된 모든 날짜 감시. highlight_dates: 이 날짜의 회차가 열리면 @channel 멘션과 함께 강조 알림.",
   "targets": [
     {
       "site_no": "0013",
       "site_name": "용산아이파크몰",
       "movie_keyword": "오디세이",
       "screen_keyword": "IMAX",
-      "dates": []
+      "dates": [],
+      "highlight_dates": [
+        "20260919",
+        "20260920"
+      ]
     },
     {
       "site_no": "0059",
       "site_name": "영등포타임스퀘어",
       "movie_keyword": "오디세이",
       "screen_keyword": "IMAX",
-      "dates": []
+      "dates": [],
+      "highlight_dates": [
+        "20260919",
+        "20260920"
+      ]
     }
   ]
 }

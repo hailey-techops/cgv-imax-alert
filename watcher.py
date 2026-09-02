@@ -98,9 +98,13 @@ def show_key(show: dict) -> str:
 
 
 def build_messages(new_hits: list[tuple[dict, dict]]) -> list[str]:
-    """(영화, 극장, 상영관)별로 별도 메시지 생성. 시간마다 잔여/전체 좌석 표기."""
+    """(영화, 극장, 상영관)별로 별도 메시지 생성. 시간마다 잔여/전체 좌석 표기.
+
+    highlight_dates에 해당하는 회차가 포함되면 @channel 멘션 + 🚨 강조 헤더.
+    """
     groups: dict[tuple, dict[str, list[str]]] = {}
-    for _target, s in new_hits:
+    hot_dates: dict[tuple, set] = {}
+    for target, s in new_hits:
         title = s.get("expoProdNm", "")
         fmt = s.get("movkndDsplNm", "")
         if fmt and fmt not in title:
@@ -108,14 +112,22 @@ def build_messages(new_hits: list[tuple[dict, dict]]) -> list[str]:
         key = (title, s.get("siteNm", ""), s.get("expoScnsNm", ""))
         entry = f"{fmt_time(s.get('scnsrtTm', ''))}({s.get('frSeatCnt', '?')}/{s.get('stcnt', '?')})"
         groups.setdefault(key, {}).setdefault(s["scnYmd"], []).append(entry)
+        if s["scnYmd"] in target.get("highlight_dates", []):
+            hot_dates.setdefault(key, set()).add(s["scnYmd"])
 
     messages = []
     for (title, site, screen), by_date in groups.items():
-        lines = ["🎬 *CGV 예매 오픈 감지!*", ""]
+        hot = hot_dates.get((title, site, screen), set())
+        if hot:
+            hot_str = ", ".join(fmt_date(d) for d in sorted(hot))
+            lines = [f"🚨🚨 <!channel> *{hot_str} 예매 열렸다!!* 🚨🚨", ""]
+        else:
+            lines = ["🎬 *CGV 예매 오픈 감지!*", ""]
         lines.append(f"*{title}*  |  {site} · {screen}")
         for ymd in sorted(by_date):
             times = " · ".join(sorted(by_date[ymd]))
-            lines.append(f">*{fmt_date(ymd)}*  {times}")
+            mark = "🔥 " if ymd in hot else ""
+            lines.append(f">{mark}*{fmt_date(ymd)}*  {times}")
         lines.append("")
         lines.append(f"<{BOOKING_URL}|바로 예매하러 가기 →>")
         messages.append("\n".join(lines))
