@@ -36,7 +36,7 @@ HEADERS = {
     "Referer": "https://cgv.co.kr/cnm/movieBook/cinema",
     "Accept": "application/json",
 }
-BOOKING_URL = "https://cgv.co.kr/cnm/movieBook/cinema"
+BOOKING_URL = "https://cgv.co.kr/cnm/movieBook/movie"
 
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = ROOT / "config.json"
