@@ -1,9 +1,11 @@
 name: CGV watch
 
 on:
-  schedule:
-    - cron: "*/10 * * * *"   # 10분 간격 (UTC 기준, 지연될 수 있음)
+  # 주 트리거: Apps Script(CGV_Dispatch.gs)가 10분마다 workflow_dispatch 호출.
+  # schedule은 GitHub 쪽 큐 지연으로 실제 2~5시간 간격으로만 돌아 백업용으로만 유지.
   workflow_dispatch: {}
+  schedule:
+    - cron: "*/30 * * * *"
 
 permissions:
   contents: write

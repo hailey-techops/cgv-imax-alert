@@ -58,11 +58,24 @@ $env:SLACK_WEBHOOK = "https://hooks.slack.com/services/..."
 python watcher.py
 ```
 
-### GitHub Actions (권장, 10분 간격)
+### GitHub Actions + Apps Script 디스패처 (권장, 10분 간격)
+
+GitHub Actions의 `schedule` 트리거는 실측 2~5시간씩 밀린다(무료 리포에서 짧은 주기는 특히 심함).
+그래서 실행 주기는 Google Apps Script 시간 트리거가 담당하고, GitHub은 실행 환경만 제공한다.
 
 1. 이 디렉토리를 GitHub 리포로 푸시
 2. 리포 Settings → Secrets and variables → Actions → `SLACK_WEBHOOK` 등록
-3. `.github/workflows/watch.yml`이 10분마다 실행되고, `notified.json`을 커밋해 상태를 유지
+3. GitHub → Settings → Developer settings → Fine-grained tokens → 토큰 발급
+   - Repository access: `cgv-imax-alert`만
+   - Permissions → Repository → **Actions: Read and write**
+4. script.google.com에서 새 프로젝트 → `CGV_Dispatch.gs` 내용 붙여넣기
+   - 프로젝트 설정 → 스크립트 속성에 `GITHUB_TOKEN` 등록 (선택: `ALERT_WEBHOOK`)
+   - `dispatchWatch()` 1회 실행해 권한 승인 + Actions 탭에 `workflow_dispatch` 실행이 뜨는지 확인
+   - `setupTrigger()` 1회 실행 → 10분 트리거 생성
+5. 워크플로의 `schedule`(30분)은 GAS 장애 시 백업용으로만 남겨둠
+
+디스패처가 3회 연속 실패하면 `ALERT_WEBHOOK`으로 경고를 보낸다(토큰 만료가 주 원인).
+상태 확인: GAS에서 `status()` 실행.
 
 수동 실행: Actions 탭 → CGV watch → Run workflow.
 
