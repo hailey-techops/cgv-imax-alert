@@ -1553,7 +1553,13 @@ var DEST_IMG = (function(){
 
 (function(){
   var DEFAULT_MEMBERS = ['도이서','류정민','최지영','이주형','장민규'];
-  var DEFAULT_HOTEL = { payer: '도이서', amount: 1549924, paidBack: ['이주형'] };
+  var DEFAULT_HOTEL = { payer: '도이서', amount: 1549924, paidBack: ['이주형'], checkInTime: '15:00', checkOutTime: '11:00' };
+  // 일정 탭에 표시되는 숙소 도착/출발 시간 (호텔 규정 시간과 별개로 우리가 정한 시간)
+  function hotelTime(kind){
+    var v = kind === 'checkin' ? state.hotel.checkInTime : state.hotel.checkOutTime;
+    var def = kind === 'checkin' ? '15:00' : '11:00';
+    return /^\d{1,2}:\d{2}$/.test(v||'') ? (v.length === 4 ? '0' + v : v) : def;
+  }
   var HOTEL_INFO = {
     name: '란도르 호텔 삿포로 헤리티지',
     address: '4-chōme-424-10 Minami 7 Jōnishi, 주오구, 064-0807 삿포로시, 홋카이도, 일본',
@@ -2244,10 +2250,10 @@ var DEST_IMG = (function(){
       state.flights.filter(function(f){ return f.direction === 'out'; }).forEach(function(f){
         items.push({ sortKey: f.depTime || '99:99', render: function(){ return flightEv(f); } });
       });
-      items.push({ sortKey: '15:00', render: function(){ return hotelEv('checkin'); } });
+      items.push({ sortKey: hotelTime('checkin'), render: function(){ return hotelEv('checkin'); } });
     }
     if(idx === DAYS.length - 1){
-      items.push({ sortKey: '10:59', render: function(){ return hotelEv('checkout'); } });
+      items.push({ sortKey: hotelTime('checkout'), render: function(){ return hotelEv('checkout'); } });
       state.flights.filter(function(f){ return f.direction === 'in'; }).forEach(function(f){
         items.push({ sortKey: f.depTime || '99:99', render: function(){ return flightEv(f); } });
       });
@@ -2327,9 +2333,9 @@ var DEST_IMG = (function(){
     var isIn = kind === 'checkin';
     b.innerHTML = '<div class="ev-ico">🏨</div>'
       + '<div class="ev-main">'
-      +   '<div class="ev-time">' + (isIn ? '15:00 이후' : '11:00 이전') + '</div>'
+      +   '<div class="ev-time">' + hotelTime(kind) + (hotelTime(kind) === (isIn ? '15:00' : '11:00') ? (isIn ? ' 이후' : ' 이전') : '') + '</div>'
       +   '<div class="ev-title">숙소 ' + (isIn ? '체크인' : '체크아웃') + '</div>'
-      +   '<div class="ev-sub">' + esc(HOTEL_INFO.name) + '</div>'
+      +   '<div class="ev-sub">' + esc(HOTEL_INFO.name) + (hotelTime(kind) !== (isIn ? '15:00' : '11:00') ? ' · 규정 ' + (isIn ? '체크인 15:00 이후' : '체크아웃 11:00 이전') : '') + '</div>'
       + '</div>'
       + '<div class="ev-chev">›</div>';
     b.addEventListener('click', function(){ openHotelModal(); });
@@ -2463,12 +2469,27 @@ var DEST_IMG = (function(){
       + '</div>'
       + '<div class="reveal" id="pinReveal"><span class="k">체크인 PIN번호 (그룹 외 공유 금지)</span><span class="v hidden-val" id="pinVal">' + esc(h.pin) + '</span><span class="tap" id="pinTap">탭하여 확인</span></div>'
       + '<div class="note">체크인하지 않을 경우 취소 수수료가 청구됩니다. 트립닷컴 고객센터: 국내 1666-0060 · 해외 +82 2 6917 8777</div>'
+      + '<div class="divider"></div>'
+      + '<h4>일정 탭 표시 시간</h4>'
+      + '<div class="edit-row">'
+      +   '<label><span>도착(체크인) 시간</span><input type="text" id="hInTime" placeholder="HH:MM" value="' + esc(hotelTime('checkin')) + '"></label>'
+      +   '<label><span>출발(체크아웃) 시간</span><input type="text" id="hOutTime" placeholder="HH:MM" value="' + esc(hotelTime('checkout')) + '"></label>'
+      + '</div>'
+      + '<div class="note" style="font-size:11.5px">호텔 규정은 체크인 15:00 이후 · 체크아웃 11:00 이전이에요. 여기 시간은 일정표 순서용이라 자유롭게 바꿔도 돼요.</div>'
+      + '<div class="modal-actions"><span></span><button class="btn primary sm" id="hTimeSave">시간 저장</button></div>'
       + '<div class="modal-actions">'
       +   '<a class="btn" href="' + VOUCHER_PDF_URL + '" target="_blank" rel="noopener">체크인 바우처 PDF</a>'
       +   '<a class="btn" href="' + TRIPCOM_URL + '" target="_blank" rel="noopener">Trip.com에서 보기</a>'
       + '</div>';
     modalBox.appendChild(wrap);
     document.getElementById('mClose').addEventListener('click', closeModal);
+    document.getElementById('hTimeSave').addEventListener('click', function(){
+      var tin = (document.getElementById('hInTime').value || '').trim(), tout = (document.getElementById('hOutTime').value || '').trim();
+      var ok = /^\d{1,2}:\d{2}$/;
+      if((tin && !ok.test(tin)) || (tout && !ok.test(tout))){ toast('시간은 HH:MM 형식으로 적어주세요 (예: 16:30)'); return; }
+      var nextHotel = Object.assign({}, state.hotel, { checkInTime: tin || '15:00', checkOutTime: tout || '11:00' });
+      writeDoc({ hotel: nextHotel }, function(){ toast('숙소 시간을 저장했어요'); closeModal(); });
+    });
     var tap = document.getElementById('pinTap'), val = document.getElementById('pinVal'), revealed = false;
     document.getElementById('pinReveal').addEventListener('click', function(){
       revealed = !revealed; val.classList.toggle('hidden-val', !revealed);
@@ -3111,10 +3132,10 @@ var DEST_IMG = (function(){
         state.flights.filter(function(f){ return f.direction==='out'; }).forEach(function(f){
           rows.push({ k: f.depTime||'', t: (f.depTime||'--:--') + (f.arrTime?'-'+f.arrTime:'') + ' ✈ ' + (f.airline||'') + (f.flightNo?f.flightNo:'') + ' ' + (f.depPlace||'') + '-' + (f.arrPlace||'') + ((f.people&&f.people.length && f.people.length < state.members.length) ? ' (' + f.people.join('·') + ')' : '') });
         });
-        rows.push({ k:'15:00', t:'15:00 🏨체크인 - ' + HOTEL_INFO.name });
+        rows.push({ k:hotelTime('checkin'), t:hotelTime('checkin') + ' 🏨체크인 - ' + HOTEL_INFO.name });
       }
       if(idx === DAYS.length - 1){
-        rows.push({ k:'10:59', t:'11:00 🏨체크아웃 - ' + HOTEL_INFO.name });
+        rows.push({ k:hotelTime('checkout'), t:hotelTime('checkout') + ' 🏨체크아웃 - ' + HOTEL_INFO.name });
         state.flights.filter(function(f){ return f.direction==='in'; }).forEach(function(f){
           rows.push({ k: f.depTime||'', t: (f.depTime||'--:--') + (f.arrTime?'-'+f.arrTime:'') + ' ✈ ' + (f.airline||'') + (f.flightNo?f.flightNo:'') + ' ' + (f.depPlace||'') + '-' + (f.arrPlace||'') + ((f.people&&f.people.length && f.people.length < state.members.length) ? ' (' + f.people.join('·') + ')' : '') });
         });
